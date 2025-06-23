@@ -46,15 +46,19 @@ function javelin.launch(filename)
     javelin.current_file = filename
     local dir = vim.fn.fnamemodify(filename, ":h")
     local abs_path = vim.fn.fnamemodify(filename, ":p")
-    local server_js_path = vim.fn.stdpath('config') .. '/lua/config/'
+    local server_js_path = vim.fn.expand("~/plugins/javelin.nvim/app/server.js")
 
     javelin.server_job_id = vim.fn.jobstart(string.format(
-        'node "%s/app/server.js" %s',
+        'node "%s" %s',
         server_js_path,
         abs_path
     ), {
         cwd = dir,
         detach = true,
+	on_exit = function()
+            javelin.server_active = false
+            javelin.current_file = nil
+        end
     })
 
     javelin.server_active = true
