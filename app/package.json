@@ -1,0 +1,26 @@
+{
+  "name": "javelin-nvim",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/krysx7003/javelin-nvim.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/krysx7003/javelin-nvim/issues"
+  },
+  "homepage": "https://github.com/krysx7003/javelin-nvim#readme",
+  "dependencies": {
+    "express": "^5.1.0",
+    "image-size": "^2.0.2",
+    "sharp": "^0.34.2"
+  }
+}
