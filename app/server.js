@@ -7,16 +7,10 @@ const app = express();
 const port = 8081; 
 
 const clients = new Map();
-const filePath = process.argv[2];
-
-if (!filePath) {
-    console.error('Usage: node server.js /path/to/image.jpg');
-    process.exit(1);
-}
-
-const fileExt = path.extname(filePath).toLowerCase();
-const isImage = ['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(fileExt);
-const isPDF = fileExt === '.pdf';
+let filePath;
+let fileExt;
+let isImage;
+let isPDF;
 
 function openBrowser() {
     const url = `http://localhost:${port}`;
@@ -194,9 +188,37 @@ app.get('/events', (req, res) => {
     req.on('close', () => {
         console.log(`Client disconnected: ${clientId}`);
         clients.delete(clientId);
-        setTimeout(() => process.exit(0), 300);
     });
 });
+
+app.post('/new-tab/*filePath', (req, res) => {
+    filePath = req.params.filePath;
+    if (Array.isArray(filePath)) {
+        filePath = filePath.join('/');
+    }
+    filePath = '/'+filePath;
+    console.log(filePath);
+
+    if (!filePath) {
+        console.log(`Path: ${filePath} is incorect`)
+        res.status(400).send('Missing file path');
+        return;
+    }
+
+    fileExt = path.extname(filePath).toLowerCase();
+    isImage = ['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(fileExt);
+    isPDF = fileExt === '.pdf';
+
+    console.log(`Serving image: ${filePath}`);
+    openBrowser();
+})
+
+app.post('/close-tab', (req, res) => {
+    console.log('Closing Firefox window...');
+    clients.forEach((clientRes, id) => {
+        clientRes.write('data: close\n\n');
+    });
+})
 
 function shutdown(){
     console.log('\nClosing Firefox window...');
@@ -211,6 +233,4 @@ process.on('SIGTERM', shutdown);
 
 app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);
-    console.log(`Serving image: ${filePath}`);
-    openBrowser();
 });

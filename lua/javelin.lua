@@ -1,84 +1,86 @@
-local javelin ={}
+local M = {}
 
-javelin.server_active = false
-javelin.current_file = nil
-javelin.server_port = 8081
-javelin.server_job_id = nil
+M.server_active = false
+M.current_file = nil
+M.server_port = 8081
+M.server_job_id = nil
 
-function javelin.setup()
-    vim.api.nvim_create_autocmd("BufReadCmd", {
-      pattern = { "*.png", "*.jpg", "*.jpeg", "*.gif", "*.webp","*.pdf" },
-      callback = function()
-        local filename = vim.api.nvim_buf_get_name(0)
-        vim.cmd("let tobedeleted = bufnr('%') | b# | exe \"bd! \" . tobedeleted")
+function M.setup()
+	M.server_start()
+	vim.api.nvim_create_autocmd("BufReadCmd", {
+		pattern = { "*.png", "*.jpg", "*.jpeg", "*.gif", "*.webp", "*.pdf" },
+		callback = function()
+			local filename = vim.api.nvim_buf_get_name(0)
+			vim.cmd("let tobedeleted = bufnr('%') | b# | exe \"bd! \" . tobedeleted")
 
-        if not javelin.server_active then
-            javelin.launch(filename)
+			if not M.server_active then
+				M.launch(filename)
+			elseif M.current_file == filename then
+				M.close_tab()
+				return
+			else
+				M.close_tab()
+				M.launch(filename)
+			end
+		end,
+	})
 
-        elseif javelin.current_file == filename then
-            javelin.stop_server()
-            return
+	vim.api.nvim_create_autocmd("VimLeavePre", {
+		callback = function()
+			if M.server_active then
+				M.close_tab()
+				M.stop_server()
+			end
+		end,
+	})
 
-        else
-            javelin.stop_server()
-            vim.defer_fn(function()
-                javelin.launch(filename)
-            end, 200)
-        end
-
-      end
-    })
-
-    vim.api.nvim_create_autocmd("VimLeavePre", {
-        callback = function()
-            if javelin.server_active then
-                javelin.stop_server()
-            end
-        end
-    })
-
-    vim.api.nvim_create_user_command('ImagePreviewStatus', function()
-            require('config.images').status()
-        end, {})
+	vim.api.nvim_create_user_command("ImagePreviewStatus", function()
+		require("config.images").status()
+	end, {})
 end
 
-function javelin.launch(filename)
-    javelin.current_file = filename
-    local dir = vim.fn.fnamemodify(filename, ":h")
-    local abs_path = vim.fn.fnamemodify(filename, ":p")
-    local server_js_path = vim.fn.expand("~/plugins/javelin.nvim/app/server.js")
-
-    javelin.server_job_id = vim.fn.jobstart(string.format(
-        'node "%s" %s',
-        server_js_path,
-        abs_path
-    ), {
-        cwd = dir,
-        detach = true,
-	on_exit = function()
-            javelin.server_active = false
-            javelin.current_file = nil
-        end
-    })
-
-    javelin.server_active = true
+function M.server_start()
+	local server_js_path = vim.fn.expand("~/plugins/javelin.nvim/app/server.js")
+	print("Server started at", server_js_path)
+	M.server_job_id = vim.fn.jobstart(string.format("node %s", server_js_path), {
+		detach = true,
+		on_exit = function()
+			M.server_active = false
+			M.current_file = nil
+		end,
+	})
 end
 
-function javelin.stop_server()
-    if javelin.server_job_id then
-        vim.fn.jobstop(javelin.server_job_id)
-        javelin.server_job_id = nil
-    end
-
-    javelin.server_active = false
-    javelin.current_file = nil
+function M.server_stop()
+	if M.server_job_id then
+		vim.fn.jobstop(M.server_job_id)
+		M.server_job_id = nil
+	end
 end
 
-function javelin.status()
-    print(string.format("Server: %s | File: %s | Port: %d",
-        javelin.server_active and "Running" or "Stopped",
-        javelin.current_file or "None",
-        javelin.server_port))
+function M.launch(filename)
+	M.current_file = filename
+	M.server_active = true
+	local abs_path = vim.fn.fnamemodify(filename, ":p")
+	local url = "http://localhost:8081/new-tab" .. abs_path:gsub(" ", "%%20")
+	vim.fn.jobstart({ "curl", "-X", "POST", url })
 end
 
-return javelin
+function M.close_tab()
+	M.server_active = false
+	M.current_file = nil
+	vim.fn.jobstart({ "curl", "-X", "POST", "http://localhost:8081/close-tab" })
+end
+
+function M.status()
+	print(
+		string.format(
+			"Server: %s | File: %s | Port: %d",
+			M.server_active and "Running" or "Stopped",
+			M.current_file or "None",
+			M.server_port
+		)
+	)
+end
+
+return M

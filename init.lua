@@ -1,1 +1,1 @@
-return require('javelin')
+return require("javelin")
