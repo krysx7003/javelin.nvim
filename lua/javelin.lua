@@ -40,10 +40,10 @@ function M.setup()
 end
 
 function M.server_start()
-    local server_js_path = vim.fn.getcwd()
+    local server_js_path = vim.fn.expand("%:p:h:h") .. "/app/server.js"
     -- vim.fn.expand("~/plugins/javelin.nvim/app/server.js")
     print("Server started at", server_js_path)
-    M.server_job_id = vim.fn.jobstart(string.format("node %s/app/server.js", server_js_path), {
+    M.server_job_id = vim.fn.jobstart(string.format("node %s", server_js_path), {
         detach = true,
         on_exit = function()
             M.server_active = false
