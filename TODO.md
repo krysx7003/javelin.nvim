@@ -7,5 +7,5 @@
 - [ ] Add logging
 - [ ] Move htmls to separate files
 - [ ] Swap current implementation to PDF.js
-- [ ] Move most code from vimtex config here
+- [x] Move most code from vimtex config here
 - [ ] Open dir in file explorer

@@ -1,6 +1,44 @@
 local M = {}
 
+local stack = {}
+function stack.push(self, value)
+	table.insert(self, value)
+end
+
+function stack.pop(self)
+	return table.remove(self)
+end
+
+M.backstack = {}
 function M.setup()
+	vim.keymap.set("n", "<leader>te", function()
+		local line = vim.api.nvim_get_current_line()
+		line = string.gsub(line, "^%s+", "")
+		if string.find(line, "^\\input{") then
+			stack.push(M.backstack, vim.api.nvim_buf_get_name(0))
+			line = string.gsub(line, "^\\input{", "")
+			line = string.gsub(line, "}", "")
+			local cmd = "edit" .. " " .. line
+			vim.cmd(cmd)
+		end
+	end)
+
+	vim.keymap.set("n", "<leader>tu", function()
+		if #M.backstack ~= 0 then
+			local line = stack.pop(M.backstack)
+			local cmd = "edit" .. " " .. line
+			vim.cmd(cmd)
+		else
+			print("Stack is empty")
+		end
+	end)
+
+	vim.api.nvim_create_autocmd("BufEnter", {
+		pattern = { "*.tex" },
+		callback = function()
+			M.launch_check("main.pdf")
+		end,
+	})
 	return M
 end
 
