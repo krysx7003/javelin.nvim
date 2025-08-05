@@ -234,3 +234,8 @@ process.on('SIGTERM', shutdown);
 app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);
 });
+
+
+clients.forEach((res, id) => {
+        res.write('{type:"synctex",page:1,x: ,y: }\n\n');
+    });

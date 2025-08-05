@@ -13,15 +13,7 @@ function M.setup()
 			local filename = vim.api.nvim_buf_get_name(0)
 			vim.cmd("let tobedeleted = bufnr('%') | b# | exe \"bd! \" . tobedeleted")
 
-			if not M.server_active then
-				M.launch(filename)
-			elseif M.current_file == filename then
-				M.close_tab()
-				return
-			else
-				M.close_tab()
-				M.launch(filename)
-			end
+			M.launch_check(filename)
 		end,
 	})
 
@@ -33,6 +25,7 @@ function M.setup()
 			end
 		end,
 	})
+	M.tex = require("javelin-tex").setup()
 
 	vim.api.nvim_create_user_command("ImagePreviewStatus", function()
 		require("config.images").status()
@@ -72,6 +65,18 @@ function M.server_stop()
 	if M.server_job_id then
 		vim.fn.jobstop(M.server_job_id)
 		M.server_job_id = nil
+	end
+end
+
+function M.launch_check(filename)
+	if not M.server_active then
+		M.launch(filename)
+	elseif M.current_file == filename then
+		M.close_tab()
+		return
+	else
+		M.close_tab()
+		M.launch(filename)
 	end
 end
 
