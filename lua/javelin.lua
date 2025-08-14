@@ -5,6 +5,20 @@ M.current_file = nil
 M.server_port = 8081
 M.server_job_id = nil
 
+function M.log(msg)
+	local file = io.open(M.log_file, "a")
+	if not M.should_log then
+		return
+	end
+
+	if file then
+		file:write(msg .. "\n")
+		file.close()
+	else
+		print("[Chronos] Failed to write to file " .. M.log_file)
+	end
+end
+
 function M.setup()
 	M.server_start()
 	vim.api.nvim_create_autocmd("BufReadCmd", {
