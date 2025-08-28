@@ -3,120 +3,49 @@ local M = {}
 M.server_active = false
 M.current_file = nil
 M.server_port = 8081
-M.server_job_id = nil
-
-function M.log(msg)
-	local file = io.open(M.log_file, "a")
-	if not M.should_log then
-		return
-	end
-
-	if file then
-		file:write(msg .. "\n")
-		file.close()
-	else
-		print("[Chronos] Failed to write to file " .. M.log_file)
-	end
-end
+M.job_id = nil
 
 function M.setup()
-	M.server_start()
 	vim.api.nvim_create_autocmd("BufReadCmd", {
-		pattern = { "*.png", "*.jpg", "*.jpeg", "*.gif", "*.webp", "*.pdf" },
+		pattern = { "*.png", "*.jpg", "*.jpeg", "*.gif", "*.webp" },
 		callback = function()
 			local filename = vim.api.nvim_buf_get_name(0)
-			vim.cmd("let tobedeleted = bufnr('%') | b# | exe \"bd! \" . tobedeleted")
+			M.job_id = vim.fn.jobstart({ "sxiv", "-a", filename })
+		end,
+	})
 
-			M.launch_check(filename)
+	vim.api.nvim_create_autocmd("BufReadCmd", {
+		pattern = { "*.pdf" },
+		callback = function()
+			local filename = vim.api.nvim_buf_get_name(0)
+			M.job_id = vim.fn.jobstart({ "zathura", filename })
 		end,
 	})
 
 	vim.api.nvim_create_autocmd("VimLeavePre", {
 		callback = function()
 			if M.server_active then
-				M.close_tab()
-				M.stop_server()
+				vim.fn.jobstop(M.job_id)
 			end
 		end,
 	})
-	M.tex = require("javelin-tex").setup()
 
-	vim.api.nvim_create_user_command("ImagePreviewStatus", function()
-		require("config.images").status()
+	vim.api.nvim_create_user_command("SxivHelp", function()
+		print("+ | Zoom in")
+		print("- | Zoom out")
+		print("= | Zoom to 100%")
+		print("hjkl | Move when zoomed in")
+		print("HJKL | Snap to edge")
+		print("w | Fit window")
+		print("e | Fit width in window")
+		print("E | Fit height in window")
+		print("> | Rotate 90 deg right")
+		print("< | Rotate 90 deg left")
+		print("? | Rotate 180 deg")
+		print("| | Invert in x axis")
+		print("_ | Invert in y axis")
+		print("Ctrl + space | Toggle playing gif")
 	end, {})
-end
-
-function M.get_plugin_dir()
-	local runtimepaths = vim.api.nvim_list_runtime_paths()
-	for _, path in ipairs(runtimepaths) do
-		if path:match("javelin.nvim") then
-			return path
-		end
-	end
-	return nil
-end
-
-function M.server_start()
-	local plugin_dir = M.get_plugin_dir()
-	local server_js_path = nil
-	if plugin_dir then
-		server_js_path = plugin_dir .. "/app/server.js"
-	else
-		error("JavelinServer: Failed to find plugin_dir")
-		return
-	end
-
-	M.server_job_id = vim.fn.jobstart(string.format("node %s", server_js_path), {
-		detach = true,
-		on_exit = function()
-			M.server_active = false
-			M.current_file = nil
-		end,
-	})
-end
-
-function M.server_stop()
-	if M.server_job_id then
-		vim.fn.jobstop(M.server_job_id)
-		M.server_job_id = nil
-	end
-end
-
-function M.launch_check(filename)
-	if not M.server_active then
-		M.launch(filename)
-	elseif M.current_file == filename then
-		M.close_tab()
-		return
-	else
-		M.close_tab()
-		M.launch(filename)
-	end
-end
-
-function M.launch(filename)
-	M.current_file = filename
-	M.server_active = true
-	local abs_path = vim.fn.fnamemodify(filename, ":p")
-	local url = "http://localhost:8081/new-tab" .. abs_path:gsub(" ", "%%20")
-	vim.fn.jobstart({ "curl", "-X", "POST", url })
-end
-
-function M.close_tab()
-	M.server_active = false
-	M.current_file = nil
-	vim.fn.jobstart({ "curl", "-X", "POST", "http://localhost:8081/close-tab" })
-end
-
-function M.status()
-	print(
-		string.format(
-			"Server: %s | File: %s | Port: %d",
-			M.server_active and "Running" or "Stopped",
-			M.current_file or "None",
-			M.server_port
-		)
-	)
 end
 
 return M
